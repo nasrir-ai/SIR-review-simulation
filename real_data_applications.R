@@ -31,24 +31,13 @@
 ## timeout so a slow or ill-conditioned method (classical SIR/SAVE on
 ## Riboflavin, p = 4088 >> n = 71) cannot hang the whole run.
 ##
-## IMPORTANT (fixed after review): earlier versions of this script drew a
-## fresh random fold assignment inside cv_r2() on every call, i.e. once per
-## method. Since run_real_data() calls cv_r2() separately for each of the 5
-## methods, this meant every method was evaluated on a different,
-## independently-random train/test split -- an unpaired comparison, where
-## part of the apparent difference between two methods' cv_R2 could simply
-## be due to which observations happened to land in whose test fold, not a
-## real difference in predictive quality. On top of that, only one K-fold
-## split was ever drawn per method, so each reported cv_R2 also carried the
-## full sampling noise of that single partition, with no way to tell signal
-## from partition-specific luck.
-##
-## Fixed by: (i) generating ONE fold assignment per CV repeat, shared
-## across all methods in that repeat, so every method is scored on exactly
-## the same train/test split each time (a paired comparison); and (ii)
-## repeating this n_cv_repeats times with an independent fold assignment
-## each repeat and averaging cv_R2 across repeats (plus reporting its
-## standard deviation), mirroring the Monte Carlo replication logic already
+## Cross-validation is both paired and repeated: ONE fold assignment is
+## generated per CV repeat, shared across all methods in that repeat, so
+## every method is scored on exactly the same train/test split (a paired
+## comparison rather than each method drawing its own independent split);
+## this is repeated n_cv_repeats times with an independent fold assignment
+## each repeat, and cv_R2 is averaged across repeats (with its standard
+## deviation also reported), mirroring the Monte Carlo replication logic
 ## used in simulation_framework.R rather than relying on a single split.
 ##
 ## =============================================================================
@@ -165,7 +154,7 @@ run_real_data <- function(X, y, H = 5, timeout_sec = 60, K_cv = 5,
                      cv_R2 = NA_real_, cv_R2_sd = NA_real_, Time = NA_real_,
                      stringsAsFactors = FALSE)
 
-  ## ---- Step 1: main (full-data) fit for each method, unchanged from before ----
+  ## ---- Step 1: main (full-data) fit for each method ---------------------------
   ##
   ## NOTE: safe_fit() already wraps fit_fun() in its own tryCatch around a
   ## setTimeLimit()-protected call. In practice, on a single very slow
@@ -271,6 +260,14 @@ X_rib <- as.matrix(riboflavin$x)
 ## since none of them approached cv_timeout_sec per fold on Big Mac, but
 ## lower n_cv_repeats here first if this turns out to run long.
 res_ribo <- run_real_data(X_rib, y_rib, H = 5, timeout_sec = 120,
+                          
+                          
+                          
+                          
+                          
+                          
+                          
+                          
                            K_cv = 3, cv_timeout_sec = 45, n_cv_repeats = 5,
                            label = "Riboflavin")
 print(res_ribo)
