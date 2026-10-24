@@ -10,13 +10,13 @@
 ## A systematic 3-factor simulation study comparing five sufficient
 ## dimension reduction estimators -- SIR, SAVE, LassoSIR, SIR-NCT, and
 ## SIR-WLS -- across:
-##   (1) sensitivity to the link function (linear / cubic / exponential /
+##   (1) sensitivity to the LINK FUNCTION (linear / cubic / exponential /
 ##       non-monotone sine),
 ##   (2) three correlation designs (block-exchangeable, autoregressive, and
 ##       a sparse-signal design, "homog2", in which the active and inactive
 ##       predictor blocks are each internally equicorrelated but only
 ##       weakly cross-correlated), and
-##   (3) reliability of structural dimension (d) estimation, compared
+##   (3) reliability of STRUCTURAL DIMENSION (d) estimation, compared
 ##       between a ladle-estimator implementation and the sequential
 ##       chi-squared test of Li (1991) / Schott (1994).
 ##
@@ -36,18 +36,21 @@
 ##   - `wls.sir()` returns a list with `$betahat`; `sir.nct()` returns the
 ##     beta vector directly.
 ##
-## Requires the `sirwls` and `nctsir` packages (see below), together with
-## `dr`, `Rdimtools`, `glmnet`, and `mvtnorm`.
+## This script is a TEMPLATE: it is designed to run in your own R
+## environment where the `sirwls` and `nctsir` packages (see below), `dr`,
+## `Rdimtools`, `glmnet`, and `mvtnorm` are available.
 ##
 ## =============================================================================
 
-## ---- 0. Packages ---------------------------------------------------------------
+## ---- 0. Packages & your own functions ----------------------------------------
 
 ## Install once if needed:
 # install.packages(c("dr", "Rdimtools", "glmnet", "mvtnorm", "LassoSIR",
 #                     "ggplot2", "devtools"))
 # devtools::install_github("nasrir-ai/SIR-WLS")
-# devtools::install_github("nasrir-ai/nctsir", subdir = "nctsir 2")
+# devtools::install_github("nasrir-ai/nctsir", subdir = "nctsir 2")  # confirm
+#   the subdir path against the repo's actual layout before running; adjust
+#   or drop `subdir` if the package's DESCRIPTION file sits at the repo root.
 
 library(dr)
 library(Rdimtools)
@@ -59,7 +62,7 @@ library(ggplot2)    # only needed for Section 9 (plots)
 ## Estimator/utility functions this script depends on -- wls.sir(), X_rand(),
 ## TPR.funct(), FPR.funct(), costeta() -- are provided by the sirwls package
 ## (companion to Asrir & Mkhadri, 2025, JSCS), and sir.nct() by the nctsir
-## package (companion to Asrir & Mkhadri, 2025, CSTM).
+## package (companion to Asrir & Mkhadri, 2024, CSTM).
 library(sirwls)
 library(nctsir)
 
@@ -186,7 +189,7 @@ cv_select_nctsir <- function(X, y, K_grid = NULL,
   list(K = best$K, tau = best$tau, grid = grid)
 }
 
-## sir.nct(): signature sir.nct(x, y, k, tho, threshold = "soft");
+## sir.nct(): real signature is sir.nct(x, y, k, tho, threshold = "soft");
 ## returns the beta-hat vector directly (ndim is implicitly 1 -- do.sir()
 ## is called internally with ndim = 1).
 ##
@@ -259,7 +262,7 @@ sir_eigen <- function(X, y, nslice = 10) {
 ## Sigma_X^{-1} Lambda are non-zero),
 ##   Lambda_k = n * sum_{j=k+1}^{p} lambda_j  ~approx  chi^2_{(p-k)(H-1-k)}
 ## Testing sequentially from k = 0 upward and stopping at the first k that
-## is not rejected gives d_hat.
+## is NOT rejected gives d_hat.
 ##
 ## @param alpha test level at each step of the sequential procedure
 sir_chi2_dhat <- function(X, y, nslice = 10, alpha = 0.05) {
@@ -336,10 +339,14 @@ ladle_estimator <- function(X, y, Kmax = 10, B = 200, nslice = 10) {
 
 ## ---- 6. Main simulation loop: design x link function x method --------------
 ##
-## Repetitions are run in parallel (parallel::mclapply()), each method call
-## is protected by a wall-clock timeout (setTimeLimit()), and progress is
-## reported per (design, link) cell. probe_simulation_time() gives a timing
-## estimate for a given (n, p) before launching a long run.
+## Uses the same three safety features as run_p_scaling() (Section 6b):
+## parallel::mclapply() across repetitions, a per-method wall-clock timeout
+## via setTimeLimit(), and verbose per-cell progress messages, so a long
+## run at large (n, p, repetitions) never goes silent with no way to tell
+## whether it is progressing or stuck. Use probe_simulation_time() below
+## FIRST, with a small repetitions_probe (e.g. 2), to get a real timing
+## estimate for your target (n, p) before committing to a specific
+## `repetitions` value.
 ##
 ## @param timeout_sec per-method, per-replicate wall-clock cap (as in
 ##   run_p_scaling()); a failed/timed-out call is scored as a zero vector
@@ -443,9 +450,15 @@ run_simulation <- function(n = 300, p = 200, q = 10, repetitions = 50,
   results
 }
 
-## Timing probe: runs run_simulation() with a small number of repetitions
-## (default 2) at a given (n, p, q) and extrapolates the total running time
-## for larger numbers of repetitions (approximate when mc.cores > 1).
+## Timing probe: runs run_simulation() with a SMALL repetitions_probe
+## (default 2) at your target (n, p, q) and extrapolates the expected
+## total time for larger repetitions counts, so you can decide how many
+## repetitions are actually feasible BEFORE committing to a long run.
+## Because the 12 design x link cells are run sequentially (each one
+## internally parallelized across repetitions_probe), the extrapolation
+## divides out the per-replication cost per cell rather than just scaling
+## total wall time linearly, which is a closer (though still approximate)
+## estimate once mc.cores > 1.
 ##
 ## @param repetitions_probe how many replications to actually run for the
 ##   timing estimate; 2 is usually enough to get a stable per-replicate
@@ -475,10 +488,15 @@ probe_simulation_time <- function(n, p, q, nslice = 10, repetitions_probe = 2,
 
 ## ---- 6b. Dimension-scaling study: performance as a function of p -----------
 ##
-## Fixes n and a single design/link and sweeps p over a grid crossing n
-## (p < n, p ~ n, p > n), illustrating the phase-transition result of
-## Lin, Zhao & Liu (2018) discussed in Section 3.2 (sqrt(n)-consistency
-## requires p = o(n)).
+## Unlike Sections 6 and 9's other plots (which just re-visualize the design-
+## and link-comparison tables), this operationalizes something not yet
+## delivered numerically: item 1 of Section 5.1 promised crossing "sample
+## sizes/dimensions spanning p<n, p~n, and p>n", but run_simulation() above
+## only ever varies the correlation structure at a single fixed (n, p). This
+## function instead fixes n and a single design/link, and sweeps p across a
+## grid that crosses n -- directly illustrating the phase-transition result
+## of Lin, Zhao & Liu (2018) discussed in Section 3.2 (sqrt(n)-consistency
+## requires p = o(n); breakdown as p approaches/exceeds n).
 ##
 ## Every method call is wrapped in tryCatch() *and* a hard per-call wall-clock
 ## timeout (see `timeout_sec` below): once p >= n, Sigma_X is singular, and
@@ -487,12 +505,29 @@ probe_simulation_time <- function(n, p, q, nslice = 10, repetitions_probe = 2,
 ## hide, so a failed or timed-out replicate is scored as a zero vector
 ## (worst case) rather than dropped or left to hang the whole run.
 ##
-## For long runs, calling the function from a non-interactive session
-## (Rscript) is recommended.
+## IMPORTANT -- if a previous run "ran all night with no output": the most
+## likely cause is not raw compute cost (720 calls at p up to 400 should
+## take minutes, not hours) but a *silent interactive prompt* somewhere
+## down the call stack (e.g. a readline() left over from an installed
+## package's interactive branch) blocking forever on stdin with no error
+## and no timeout, which setTimeLimit() cannot always interrupt because the
+## process is blocked in a low-level read, not executing R code. Two
+## defenses, both applied here: (1) call this from a *non-interactive*
+## session (`Rscript your_script.R` from Terminal, or `R -q -e '...'`) so
+## any stray readline() errors out immediately ("no lines available in
+## input connection") instead of blocking -- do NOT source() this
+## interactively in RStudio for a long run; (2) the `timeout_sec` argument
+## below, which best-effort-interrupts genuinely slow (not blocked)
+## computations via setTimeLimit().
 ##
 ## @param link one or more names from link_functions (default: all four).
-##   Using all four links allows a like-with-like reading of the link
-##   comparison tables in the paper.
+##   Running all four links together (rather than any single one in
+##   isolation) is important: under a truly linear link, SIR-type methods
+##   pay a price for not assuming linearity that isn't rewarded, whereas
+##   their comparative advantage shows up clearly under nonlinear links
+##   (especially "exponential"). Comparing across all four links, as done
+##   here by default, is what lets you read Table~sim-link /
+##   Table~sim-p500-link in the paper like with like.
 ## @param mc.cores number of cores to use via parallel::mclapply() (forking,
 ##   so Mac/Linux only -- automatically falls back to serial on Windows or
 ##   if the `parallel` package is unavailable). Defaults to all-but-one
@@ -524,7 +559,9 @@ run_p_scaling <- function(n = 100, p_grid = c(20, 50, 100, 300),
       Time = time_sec)
   }
 
-  ## safe_run(): tryCatch + setTimeLimit, with an optional progress message.
+  ## safe_run(): tryCatch + setTimeLimit, and (if verbose) prints which
+  ## method/p/replicate it is about to run *before* running it, so if a run
+  ## does stall, the last printed line tells you exactly where.
   safe_run <- function(label, p, expr_fun) {
     if (verbose) message("  -> ", label, " (p = ", p, ") ...", appendLF = FALSE)
     t0 <- Sys.time()
@@ -630,9 +667,20 @@ run_dimension_substudy <- function(n = 300, p = 100, repetitions = 30,
     X <- mvtnorm::rmvnorm(n, rep(0, p), diag(p))
     t_index <- X %*% Beta_mat
     eps <- rnorm(n)
-    ## Non-additive link with odd (monotone) transforms, so that each of the
-    ## d directions is visible to first-moment SIR and the central subspace
-    ## has dimension d (see Section~\ref{sec:link-function}).
+    ## IMPORTANT, two requirements on the per-direction transforms:
+    ## (1) y must depend on the d index directions through a genuinely
+    ##     non-additive-linear link, otherwise the "true" central subspace
+    ##     collapses to rank 1 regardless of d (`y <- rowSums(t_index) +
+    ##     eps` is equivalent to a single linear index).
+    ## (2) EVERY per-direction transform must be visible to first-moment
+    ##     SIR, i.e. NOT symmetric about 0 -- Section~\ref{sec:link-function}
+    ##     of the paper notes that first-moment SIR is blind to any
+    ##     direction along which E[X|Y] is flat, which includes symmetric
+    ##     (even) link functions. All three transforms below are
+    ##     odd/monotonic (identity, cube, sign-times-sqrt) so none of the d
+    ##     directions is structurally invisible to SIR-based eigenvalues,
+    ##     while remaining non-linearly related so they cannot be summed
+    ##     away into a single linear index.
     transforms <- list(function(t) t,
                         function(t) t^3 / 3,
                         function(t) sign(t) * sqrt(abs(t)))
@@ -659,7 +707,7 @@ run_dimension_substudy <- function(n = 300, p = 100, repetitions = 30,
 
 ## ---- 7b. Diagnostic helper for the dimension sub-study ----------------------
 ##
-## Regenerates one replicate with the exact DGP used by
+## Regenerates ONE replicate with the exact DGP used by
 ## run_dimension_substudy() and prints every intermediate quantity feeding
 ## both order-determination criteria (ladle estimator and sequential
 ## chi-squared test). Per-direction transforms are all odd functions
@@ -668,11 +716,16 @@ run_dimension_substudy <- function(n = 300, p = 100, repetitions = 30,
 ## (even) link functions -- an even transform would make that direction
 ## structurally invisible rather than merely under-detected.
 ##
+## If ladle_dhat looks off for true_d = 2, 3, the printed f_n/phi_n/g_n
+## vectors below are the place to look: in particular, whether phi_n(k)
+## rises sharply as soon as k exceeds the number of directions SIR can
+## actually see (rather than at true_d itself), which would point to
+## eigenvector instability in the bootstrap step rather than the DGP.
 ##
 ## @param true_d the structural dimension to simulate (matches
 ##   run_dimension_substudy()'s true_d_values)
 ## @param n, p sample size / ambient dimension (match the run_dimension_substudy()
-##   call, e.g. n = 150, p = 50)
+##   call you are debugging, e.g. n = 150, p = 50)
 ## @param seed optional RNG seed for reproducibility across repeated calls
 debug_dimension_estimation <- function(true_d, n = 300, p = 100, seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
@@ -731,10 +784,22 @@ debug_dimension_estimation <- function(true_d, n = 300, p = 100, seed = NULL) {
 }
 
 ## ---- 8. Example run (small settings for a quick smoke test) ----------------
-## Settings used in the paper are given below (commented out).
-## probe_simulation_time() can be used first to estimate running time, e.g.
+## Uncomment to run once your packages (Section 0) are loaded. Start small
+## (n, p, repetitions) to sanity-check timing before scaling up to the
+## paper's final settings (e.g. n = 500, p = 700, repetitions = 200,
+## matching the published SIR-WLS simulation scale).
+##
+## BEFORE scaling `repetitions` up toward that final scale, run
+## probe_simulation_time() at your target (n, p, q) -- it runs a couple of
+## real replications and extrapolates the time cost for larger repetitions
+## counts, e.g.:
 ##   probe_simulation_time(n = 500, p = 700, q = 10)
-
+## This tells you, from an actual timed run rather than a guess, whether
+## repetitions = 100 or 200 is realistic on your machine before you commit
+## to it. run_simulation() is parallelized (mclapply, like
+## run_p_scaling()) and per-method-call timeout-protected, so a long run
+## will not hang silently, but it can still legitimately take a long time
+## at large (n, p, repetitions) if left uncapped.
 
  #res_main <- run_simulation(n = 100, p = 500, q = 5, repetitions = 100)
  #write.csv(res_main, "sir_review_simulation_results.csv", row.names = FALSE)
@@ -744,9 +809,17 @@ debug_dimension_estimation <- function(true_d, n = 300, p = 100, seed = NULL) {
  #write.csv(res_dim, "sir_review_dimension_estimation_results.csv", row.names = FALSE)
  #print(aggregate(cbind(ladle_dhat, chi2_dhat) ~ true_d, data = res_dim, FUN = mean))
 #
-## High-dimensional setting (n = 150, p = 500) for the dimension sub-study.
-## ladle_B is reduced to 50 because each bootstrap resample requires a
-## p x p eigendecomposition; this run is computationally long.
+## p >> n companion run: n = 150, p = 500, the same high-dimensional point
+## used in run_simulation()/run_p_scaling() above, to show directly (not
+## just argue) that both order-determination criteria break down further
+## once Sigma_X is severely rank-deficient, rather than just under-estimating
+## d as at the moderate n = 150, p = 50 point above. ladle_B is lowered from
+## the 100 default (each bootstrap resample costs a full p x p
+## eigendecomposition, so cost scales with ladle_B * p^3). This function is
+## a plain sequential loop (not parallelized like run_simulation()/
+## run_p_scaling()), and near-singular Sigma_X can make individual
+## replicates take several minutes each at this scale, so expect this call
+## to run for hours at repetitions = 100.
 # res_dim_highdim <- run_dimension_substudy(n = 150, p = 500, repetitions = 100,
                                           #  true_d_values = 1:3, ladle_B = 50)
 # write.csv(res_dim_highdim, "sir_review_dimension_estimation_highdim_results.csv", row.names = FALSE)
@@ -754,10 +827,16 @@ debug_dimension_estimation <- function(true_d, n = 300, p = 100, seed = NULL) {
 
 ## ---- 9. Plots -----------------------------------------------------------------
 ##
-## Functions producing the figures of the paper (fig_sim_link.pdf,
-## fig_sim_design.pdf, fig_sim_tradeoff.pdf), plus plot_dimension_substudy()
-## for the dimension-estimation sub-study. Each saves a PDF via ggsave()
-## and returns the ggplot object invisibly.
+## These three functions reproduce, from your own res_main / res_dim data
+## frames, the exact figure styles embedded in the LaTeX paper
+## (figures/fig_sim_link.pdf, figures/fig_sim_design.pdf,
+## figures/fig_sim_tradeoff.pdf). Re-running these on updated simulation
+## results and overwriting the same filenames under figures/ updates the
+## paper's figures with no LaTeX changes needed. A fourth function,
+## plot_dimension_substudy(), covers the dimension-estimation sub-study.
+##
+## All four save a PDF via ggsave() and also return the ggplot object
+## invisibly, so you can inspect/tweak it interactively before saving.
 
 method_levels <- c("SIR", "SAVE", "LassoSIR", "SIR-NCT", "SIR-WLS")
 method_palette <- c(SIR = "#1b4965", SAVE = "#5fa8d3", LassoSIR = "#bc4749",
@@ -839,11 +918,19 @@ plot_tradeoff <- function(res_main, file = "figures/fig_sim_tradeoff.pdf") {
 }
 
 ## Performance against p at fixed n, one curve per method, with a dashed
-## reference line at p = n (Section 3.2).
+## reference line at p = n -- reproduces run_p_scaling() (Section 6b). This
+## is the one figure in this script that is NOT a re-plot of a results
+## table already in the paper: it directly shows the p<n / p~=n / p>n
+## breakdown behaviour discussed in Section 3.2.
 ##
 ## @param metric one of "abscos", "TPR", "FPR", "FDR" (a column of res_scaling)
-## @param link optional: restrict to one link before plotting. If NULL and
-##   several links are present, each link is shown in its own facet.
+## @param link optional: restrict to one link (e.g. "exponential") before
+##   plotting. If NULL (default) and res_scaling contains more than one
+##   link, all of them are shown as separate facets (facet_wrap(~link)) --
+##   do NOT average across links here, since "linear" specifically is the
+##   single worst-case link for SIR-WLS/LassoSIR (see the long comment
+##   above run_p_scaling()); collapsing links together would hide exactly
+##   the pattern that matters.
 plot_p_scaling <- function(res_scaling, metric = "abscos", n_ref = NULL, link = NULL,
                             file = paste0("figures/fig_p_scaling_", metric,
                                           if (!is.null(link)) paste0("_", link) else "", ".pdf")) {
@@ -925,7 +1012,9 @@ plot_dimension_substudy <- function(res_dim, file = "figures/fig_dim_substudy.pd
   invisible(p)
 }
 
-## Example (commented out):
+## Example: res_main / res_dim -- commented out since re-running these
+## every time you source() the file is slow. Uncomment if you want to
+## regenerate the figures.
 # plot_link_comparison(res_main)
 # plot_design_comparison(res_main)
 # plot_tradeoff(res_main)
