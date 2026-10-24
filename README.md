@@ -31,7 +31,7 @@ devtools::install_github("nasrir-ai/nctsir", subdir = "nctsir 2")
 Computation and Simulation*) provides `wls.sir()`, `X_rand()`, `TPR.funct()`,
 `FPR.funct()`, and `costeta()` — the SIR-WLS estimator and the simulation
 utilities (predictor generation, proximity/variable-selection metrics) used
-throughout both scripts. `nctsir` (companion package to Asrir & Mkhadri, 2024,
+throughout both scripts. `nctsir` (companion package to Asrir & Mkhadri, 2025,
 *Communications in Statistics – Theory and Methods*) provides `sir.nct()`,
 the SIR-NCT estimator.
 
