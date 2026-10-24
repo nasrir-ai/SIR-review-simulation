@@ -29,7 +29,7 @@ devtools::install_github("nasrir-ai/nctsir", subdir = "nctsir 2")
 
 `sirwls` (companion package to Asrir & Mkhadri, 2025, *Journal of Statistical
 Computation and Simulation*) provides `wls.sir()`, `X_rand()`, `TPR.funct()`,
-`FPR.funct()`, and `costeta()` — the SIR-WLS estimator and the simulation
+`FPR.funct()`, and `costeta()` ; the SIR-WLS estimator and the simulation
 utilities (predictor generation, proximity/variable-selection metrics) used
 throughout both scripts. `nctsir` (companion package to Asrir & Mkhadri, 2025,
 *Communications in Statistics – Theory and Methods*) provides `sir.nct()`,
@@ -37,12 +37,12 @@ the SIR-NCT estimator.
 
 ## Data
 
-Both real-data examples use public, third-party R packages — no data files
+Both real-data examples use public, third-party R packages ; no data files
 are included in this repository:
 
 - *Big Mac* (`alr4::BigMac2003`, Union Bank of Switzerland, *Prices and
-  Earnings Around the Globe*, 2003) — `n = 69`, `p = 9`.
-- *Riboflavin* (`hdi::riboflavin`) — `n = 71`, `p = 4088`.
+  Earnings Around the Globe*, 2003) ; `n = 69`, `p = 9`.
+- *Riboflavin* (`hdi::riboflavin`) ; `n = 71`, `p = 4088`.
 
 ## Running
 
