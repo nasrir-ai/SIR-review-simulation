@@ -31,7 +31,7 @@ devtools::install_github("nasrir-ai/nctsir", subdir = "nctsir 2")
 Computation and Simulation*) provides `wls.sir()`, `X_rand()`, `TPR.funct()`,
 `FPR.funct()`, and `costeta()` — the SIR-WLS estimator and the simulation
 utilities (predictor generation, proximity/variable-selection metrics) used
-throughout both scripts. `nctsir` (companion package to Asrir & Mkhadri, 2024,
+throughout both scripts. `nctsir` (companion package to Asrir & Mkhadri, 2025,
 *Communications in Statistics – Theory and Methods*) provides `sir.nct()`,
 the SIR-NCT estimator.
 
@@ -56,7 +56,9 @@ source("real_data_applications.R") # Big Mac and Riboflavin applications
 Each script contains example calls (commented out near the bottom) showing
 the exact settings (`n`, `p`, number of replications, etc.) used to produce
 the results reported in the paper. All random seeds are set within the
-scripts, so results are reproducible.
+scripts; the simulations run in parallel with `parallel::mclapply()` on
+Mac and Linux, and their results are reproducible for a given number of
+cores (`mc.cores`).
 
 Some cells (in particular the `p = 500` high-dimensional simulation and the
 `Riboflavin` real-data fits) involve near-singular covariance matrices and
@@ -72,4 +74,4 @@ specifically.
 
 ## License
 
-MIT
+MIT (see `LICENSE`).
